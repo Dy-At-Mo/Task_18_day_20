@@ -1,5 +1,5 @@
 import express from "express";
-import { createTodo, getTodoById, getTodos,updateTodo,deleteTodoById,toggleTodoDone } from "../db/todos.query.js" ;
+import { createTodo, getTodoById, getTodos,updateTodo,deleteTodoById,toggleTodoDone } from "../db/queries/todos.query.js" ;
 
 export const todosRouter = express.Router();
 
@@ -11,6 +11,7 @@ todosRouter.get("/" , async(req , res)=>{
 
       // send as json
     res.json({
+      message: "success",
       data: todos,
    });
 
@@ -19,8 +20,16 @@ todosRouter.get("/" , async(req , res)=>{
 // get todos by id
 todosRouter.get("/:todo_id", async (req, res) => {
 
-  // get todo by id from database
-  const todo = await getTodoById(req.params.todo_id);
+  const id = req.params.todo_id;
+    // get todo by id from database
+  const todo = await getTodoById(id);
+
+    if(!todo){
+      return res.status(404).json({
+        message: "todo not found",
+        data: null,
+      })
+  }
 
   //send as json
   res.json({
@@ -32,7 +41,7 @@ todosRouter.get("/:todo_id", async (req, res) => {
 // create todo
 todosRouter.post("/", async (req, res, next) => {
   try {
-    const { title, body } = req.body;
+    const { title , body } = req.body;
 
     if (
       typeof title !== "string" ||
@@ -58,28 +67,40 @@ todosRouter.post("/", async (req, res, next) => {
 
 
 
+
 // update todo
+
 todosRouter.patch("/:todo_id", async (req, res, next) => {
   try {
     const { title, body } = req.body;
     const { todo_id } = req.params;
 
-    if (
-      typeof title !== "string" ||
-      !title.trim() ||
-      typeof body !== "string" ||
-      !body.trim()
-    ) {
+    if (title === undefined && body === undefined) {
       return res.status(400).json({
-        message: "Title and body are required and must be non-empty strings",
+        message: "Please provide title or body to update",
       });
     }
 
-    const todo = await updateTodo(todo_id, title, body);
+    if (
+      (title !== undefined && (typeof title !== "string" || !title.trim())) ||
+      (body !== undefined && (typeof body !== "string" || !body.trim()))
+    ) {
+      return res.status(400).json({
+        message: "Title and body must be non-empty strings",
+      });
+    }
+
+    const data = {};
+
+    if (title !== undefined) data.title = title.trim();
+    if (body !== undefined) data.body = body.trim();
+
+    const todo = await updateTodo(todo_id, data);
 
     if (!todo) {
       return res.status(404).json({
         message: "Todo not found",
+        data: null,
       });
     }
 
@@ -91,6 +112,7 @@ todosRouter.patch("/:todo_id", async (req, res, next) => {
     next(err);
   }
 });
+
 
 
 
